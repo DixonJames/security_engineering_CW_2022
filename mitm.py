@@ -15,7 +15,7 @@ def iteratePcap(pcap_path):
 def writePcap(pcap_name, pkt_list):
     path_root = "data/captures/filtered"
     save_path = os.path.join(path_root, pcap_name)
-    wrpcap(save_path, pkt_list, append=True)
+    wrpcap(pcap_name, pkt_list, append=True)
 
 
 def get_mac(ip):
@@ -324,7 +324,8 @@ class filter:
 
 def arpSpoof():
     # (victim, destination, interface) = (sys.argv[1], sys.argv[2], sys.argv[3])
-    (victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
+    #(victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
+    (victim, destination, interface) = ("10.9.0.5", "10.9.0.6", "vetha75a8aa")
     myarp = Arper(victim, destination, interface)
     myarp.run()
 
