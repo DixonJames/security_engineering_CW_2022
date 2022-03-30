@@ -1,8 +1,8 @@
 from multiprocessing import Process
 import scapy.all as scapy
 from scapy.layers.http import HTTPRequest, HTTPResponse, TCP
-from scapy.utils import hexdump
-import pyshark
+from scapy.utils import wrpcap
+
 import os
 import sys
 import time
@@ -10,6 +10,12 @@ import time
 
 def iteratePcap(pcap_path):
     yield from scapy.PcapReader(pcap_path)
+
+
+def writePcap(pcap_name, pkt_list):
+    path_root = "data/captures/filtered"
+    save_path = os.path.join(path_root, pcap_name)
+    wrpcap(save_path, pkt_list, append=False)
 
 
 def get_mac(ip):
@@ -128,7 +134,9 @@ class filter:
                 img_responses.append(pkt)
             if self.telnetPkt(pkt):
                 telnet_pkts.append(pkt)
-                modified_telnet.append(self.modifyTCPDFData(pkt=pkt, repalceWith="R"))
+                modified_pkt = self.modifyTCPDFData(pkt=pkt, repalceWith="R")
+                if modified_pkt is not None:
+                    modified_telnet.append(modified_pkt)
 
             counter += 1
 
@@ -257,13 +265,17 @@ class filter:
         # test for telnet protocol
 
         # maybe test if the payload contains the character R....
-        if pkt.haslayer("TCP"):
+        if pkt.haslayer("TCP") and "telnet" in pkt.summary():
             source_port = pkt[scapy.TCP].sport
             destiantion_port = pkt[scapy.TCP].dport
             if (source_port == 23 or destiantion_port == 23) or (source_port == 3005 or destiantion_port == 3005):
                 return True
 
         return False
+
+    def TCPChecksum(self, pkt):
+        del pkt.chksum
+        return pkt.__class__(bytes(pkt))
 
     def modifyTCPDFData(self, pkt, repalceWith="R"):
         payload = pkt[TCP].payload
@@ -272,8 +284,14 @@ class filter:
         else:
             try:
                 data = payload.load.decode("utf-8")
-                r_data = " ".Join(["R" for _ in range(len(data))])
-                bytes_data = bytes(r_data, 'UTF-8')
+                if len(data) == 0:
+                    return
+                r_data = "".join(["R" for _ in range(len(data))])
+                bytes_data = bytes(pkt[TCP].payload.load.decode("utf-8").replace(data, r_data), 'UTF-8')
+                pkt[TCP].payload.load = bytes_data
+                pkt[TCP].payload.original = bytes_data
+                correct_checksum_pkt = self.TCPChecksum(pkt)
+                return correct_checksum_pkt
             except:
                 pass
 
@@ -296,7 +314,11 @@ def questions():
     # pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
     pkt_iterator = iteratePcap("data/captures/example/telnet.cap")
     filterer = filter(capture_itr=pkt_iterator)
-    filterer.processPackets()
+    first_100, plaintest_passwd_user, img_responses, modified_telnet = filterer.processPackets()
+    all = [first_100, plaintest_passwd_user, img_responses, modified_telnet]
+    all_names = ["Task 2 - Step 1.pcap", "Task 2 - Step 2.pcap", "Task 2 - Step 3.pcap", "Task 2 - Step 4.pcap", ]
+    for i in range(len(all)):
+        writePcap(all_names[i], all[i])
 
 
 if __name__ == '__main__':
