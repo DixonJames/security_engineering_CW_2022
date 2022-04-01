@@ -349,5 +349,5 @@ def questions():
 
 
 if __name__ == '__main__':
-    arpSpoof()
-    # questions()
+    #arpSpoof()
+    questions()
