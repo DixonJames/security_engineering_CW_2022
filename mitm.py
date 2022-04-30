@@ -54,7 +54,6 @@ class Arper:
         """
         create concurrent processes to sniff and poison
         """
-        # self.sniff()
 
         self.poisoner.start()
         self.sniffer.start()
@@ -349,5 +348,5 @@ def questions():
 
 
 if __name__ == '__main__':
-    #arpSpoof()
-    questions()
+    arpSpoof()
+    #questions()
