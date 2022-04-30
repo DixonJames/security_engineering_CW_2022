@@ -18,7 +18,7 @@ BRIDGEKEEPER: What... is the air-speed velocity of an unladen swallow?
 ARTHUR: What do you mean? An African or European swallow?
 BRIDGEKEEPER: Huh? I-- I don't know that. Auuuuuuuugh!
 BEDEVERE: How do know so much about swallows?
-ARTHUR: Well, you have to know these things when you're a king, you know."""
+ARTHUR: Well, you have to know these things when you're a king, you know.@"""
 
 
 class Client:
@@ -30,9 +30,7 @@ class Client:
 
         self.connection_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, capath=self.ca_cert_pth)
 
-
-        #self.connection_context.load_cert_chain(certfile=self.ca_cert_pth, password="dees")
-
+        # self.connection_context.load_cert_chain(certfile=self.ca_cert_pth, password="dees")
 
         self.listen_socket = None
         self.ssl_socket = None
@@ -49,18 +47,28 @@ class Client:
                                           server_side=False)
 
     def handelConnection(self):
+        received_str_tot = ""
         conn = self.connection
         try:
             response_length = 0
             conn.sendall(bytes(sectret_msg, 'utf-8'))
-            print("sent msg")
+            print("sent secret msg")
 
             while response_length < len(sectret_msg):
                 data = conn.recv(16)
-                response_length += len(data)
-                print(f"received back: {data}")
+
+                d_len = len(data)
+                if d_len == 0:
+                    d_len +=1
+                response_length += d_len
+
+                #print(f"received back: {data}")
+                received_str_tot += data.decode("UTF-8")
 
         finally:
+            #print(received_str_tot)
+            if received_str_tot == sectret_msg:
+                print("sent and received identical \n Success!")
             print("closing connection")
             conn.close()
 
@@ -68,9 +76,11 @@ class Client:
         self.setup()
         try:
             self.connection.connect((server_ip, server_socket))
-            #self.connection.do_handshake()
+            self.connection.do_handshake()
+            # self.connection.do_handshake()
             self.handelConnection()
         except:
+
             self.connection.close()
 
 

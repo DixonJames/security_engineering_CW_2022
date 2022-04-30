@@ -1,6 +1,6 @@
 import socket, ssl
 
-iphost, port = "127.0.0.1", "22224"
+iphost, port = "127.0.0.1", "22239"
 
 
 class Server:
@@ -31,6 +31,7 @@ class Server:
 
     def runComminication(self, cli_connection):
         received_data = cli_connection.recv(16)
+        received_string_tot = ""
         while received_data is not None:
             received_str = received_data.decode("UTF-8")
             print(f"received: {received_str}")
@@ -39,14 +40,27 @@ class Server:
                 while received_data is not None:
 
                     cli_connection.sendall(bytes(received_str, 'utf-8'))
+
                     received_data = cli_connection.recv(16)
+                    received_str = received_data.decode("UTF-8")
+                    received_string_tot += received_str
+
+                    if "@" in received_str:
+                        cli_connection.sendall(bytes(received_str, 'utf-8'))
+                        received_data = None
+
 
             finally:
                 # Clean up the connection
+                print("Received data:")
+                print(received_string_tot)
                 print("no more data to echo back")
-                cli_connection.close()
+                #cli_connection.close()
+
+
 
     def run(self):
+
         self.socketCreation()
         # listen for connection
         self.listen_socket.listen(1)
@@ -60,9 +74,12 @@ class Server:
             try:
                 secure_connection = self.sslSettings.wrap_socket(server_sock, server_side=True, do_handshake_on_connect=True)
                 self.runComminication(secure_connection)
+
             finally:
-                secure_connection.shutdown(socket.SHUT_RDWR)
+
                 server_sock.close()
+                secure_connection.shutdown(socket.SHUT_RDWR)
+                exit(2)
 
 
 if __name__ == '__main__':
