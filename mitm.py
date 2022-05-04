@@ -306,7 +306,7 @@ class filter:
         # test for telnet protocol
 
         # maybe test if the payload contains the character R....
-        if pkt.haslayer("TCP") and "telnet" in pkt.summary():
+        if pkt.haslayer("TCP"):#and "telnet" in pkt.summary():
             source_port = pkt[scapy.TCP].sport
             destiantion_port = pkt[scapy.TCP].dport
             if (source_port == 23 or destiantion_port == 23) or (source_port == 3005 or destiantion_port == 3005):
