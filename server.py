@@ -1,6 +1,8 @@
 import socket, ssl
 
-iphost, port = "127.0.0.1", "22239"
+#iphost, port = "127.0.0.1", "22239"
+iphost, port = "10.9.0.5", "2222"
+#victim = "10.9.0.5"
 
 
 class Server:

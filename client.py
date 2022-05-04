@@ -7,8 +7,9 @@ import ssl
 from server import iphost, port
 
 s_iphost, s_port = iphost, port
-iphost, port = "127.0.0.1", "2223"
-
+#iphost, port = "127.0.0.1", "2223"
+iphost, port = "10.9.0.6", "2223"
+#destination = "10.9.0.6"
 sectret_msg = """
 BRIDGEKEEPER: Hee hee heh. Stop! What... is your name?
 ARTHUR: It is 'Arthur', King of the Britons.
