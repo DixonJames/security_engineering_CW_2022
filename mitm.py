@@ -90,7 +90,6 @@ class Arper:
             # print(packet.summary())
             yield packet
 
-
     def sniff(self, count=100):
         # this function performs the sniffing attack
 
@@ -113,8 +112,6 @@ class Arper:
 
         filename = f"Task 2 - Step {self.question_num}.pcap"
 
-        exists = os.path.isfile(filename)
-
         if self.tot_written >= 100 and self.gotfirst100 == False and self.question_num == 1:
             writePcap(filename, self.first100[:99])
             self.gotfirst100 = True
@@ -124,8 +121,6 @@ class Arper:
 
         if len(resulting_pkts) != 0:
             writePcap(filename, resulting_pkts)
-
-        # writePcap("all.pcap", captured_packets)
 
     def restore(self):
         victim_cure = scapy.ARP(op=2,
@@ -342,13 +337,11 @@ class filter:
                 pass
 
 
-def arpSpoof(option=1):
+def arpSpoof(victim, destination, interface, option=1):
     # (victim, destination, interface) = (sys.argv[1], sys.argv[2], sys.argv[3])
     # (victim, destination, interface) = ("192.168.2.120", "192.168.2.1", "wlp59s0")
 
-    (victim, destination, interface) = ("10.9.0.5", "10.9.0.6", "vetha75a8aa")
-
-    myarp = Arper(victim, destination, interface, option=1)
+    myarp = Arper(victim, destination, interface, option=option)
     myarp.run()
 
 
@@ -359,8 +352,8 @@ def logins():
 
 
 def questions():
-    # pkt_iterator = iteratePcap("data/captures/example/wwb001-hackerwatch.pcapng")
-    # pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
+    #pkt_iterator = iteratePcap("data/captures/example/wwb001-hackerwatch.pcapng")
+    #pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
     pkt_iterator = iteratePcap("data/captures/example/telnet.cap")
     filterer = filter(capture_itr=pkt_iterator, option=1)
     filtered = filterer.processPackets(pkt_iterator)
@@ -373,7 +366,15 @@ if __name__ == '__main__':
     """
     please pick options:
     1/2/3/4
-    depending on what question you are assessing!
+    depending on what stage you are assessing!
     """
-    arpSpoof(option=1)
+    stage = 1
+    victim = "10.9.0.5"
+    destination = "10.9.0.6"
+    interface = "vetha75a8aa"
+
+    print("change setup in the __main__\n")
+    print("Current settings:")
+    print(f"stage = {stage}\ninterface = {interface}\nvictim = {victim}\ndestination = {destination}\n")
+    arpSpoof(victim, destination, interface, option=stage)
     #questions()
