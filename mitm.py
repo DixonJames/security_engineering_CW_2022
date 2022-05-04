@@ -105,7 +105,7 @@ class Arper:
             print(f"captured {self.victim_ip} {i}/{count}")
 
     def filterWrite(self, captured_packets):
-        print(f"captured {self.victim_ip} {self.pkt_capture_count}")
+        #print(f"captured {self.victim_ip} {self.pkt_capture_count}")
         self.pkt_capture_count += 1
 
         resulting_pkts = filter(capture_itr=captured_packets, option=self.question_num).processPackets(captured_packets)
@@ -355,7 +355,7 @@ def questions():
     #pkt_iterator = iteratePcap("data/captures/example/wwb001-hackerwatch.pcapng")
     #pkt_iterator = iteratePcap("data/captures/example/http_witp_jpegs.cap")
     pkt_iterator = iteratePcap("data/captures/example/telnet.cap")
-    filterer = filter(capture_itr=pkt_iterator, option=1)
+    filterer = filter(capture_itr=pkt_iterator, option=4)
     filtered = filterer.processPackets(pkt_iterator)
 
     for i in filtered:

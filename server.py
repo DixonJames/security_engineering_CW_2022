@@ -1,6 +1,6 @@
 import socket, ssl
 
-#iphost, port = "127.0.0.1", "22239"
+#iphost, port = "127.0.0.1", "2222"
 iphost, port = "10.9.0.5", "2222"
 #victim = "10.9.0.5"
 
@@ -85,8 +85,19 @@ class Server:
 
 
 if __name__ == '__main__':
-    ca_cer_path = "data/keys/ca.crt"
-    cert_path = "data/keys/server.crt"
-    priv_key_path = "data/keys/server.key"
+    instructions = """
+    instructions for use\n
+    1. run server.py\n
+    2. then run client.py\n
+    3. press enter on client.py\n
+    
+    - to edit port numbers and IPs, change them at the top of each respective file
+    """
+    print(instructions)
+    print(f"ip of host, port = {iphost}, {port}")
+
+    ca_cer_path = "keys/ca.crt"
+    cert_path = "keys/server.crt"
+    priv_key_path = "keys/server.key"
     s = Server(ca_cer_path, cert_path, priv_key_path, iphost, port)
     s.run()

@@ -9,7 +9,7 @@ from server import iphost, port
 s_iphost, s_port = iphost, port
 #iphost, port = "127.0.0.1", "2223"
 iphost, port = "10.9.0.6", "2223"
-#destination = "10.9.0.6"
+
 sectret_msg = """
 BRIDGEKEEPER: Hee hee heh. Stop! What... is your name?
 ARTHUR: It is 'Arthur', King of the Britons.
@@ -86,6 +86,20 @@ class Client:
 
 
 if __name__ == '__main__':
-    cert_path = "data/keys/ca.crt"
+    cert_path = "keys/ca.crt"
     s = Client(cert_path, iphost, port)
+
+    instructions = """
+    instructions for use\n
+    1. run server.py\n
+    2. then run client.py\n
+    3. press enter on client.py\n
+
+    - to edit port numbers and IPs, change them at the top of each respective file
+    """
+    print(instructions)
+
+    print(f"ip of server, server port = {s_iphost}, {s_port}")
+    print(f"ip of client, client port = {iphost}, {port}")
+    _ = input("Press Enter to send secret message")
     s.connect(s_iphost, int(s_port))
